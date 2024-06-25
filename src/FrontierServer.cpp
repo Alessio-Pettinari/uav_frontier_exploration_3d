@@ -35,8 +35,12 @@ namespace frontier_server
 		// Initialize subscribers
 		m_pointReachedSub = m_nh.subscribe("point_reached", 1, 
 			&FrontierServer::pointReachedCallback, this);
-		m_currentReferenceSub = m_nh.subscribe("carrot/pose", 1, 
+		// m_currentReferenceSub = m_nh.subscribe("carrot/pose", 1, 
+		// 	&FrontierServer::currentReferenceCallback, this);
+		m_currentReferenceSub = m_nh.subscribe("first/odom_ft", 1, 
 			&FrontierServer::currentReferenceCallback, this);
+		// m_currentReferenceSub = m_nh.subscribe("initialpose", 1, 
+		// 	&FrontierServer::currentReferenceCallback, this);
 
 		// Initialize position hold service if exploration is off
 		m_serviceExploration = m_nh.advertiseService("exploration/toggle",
@@ -89,20 +93,19 @@ namespace frontier_server
 		std::vector<octomap::point3d> changedCellNeighbor;
 		int frontierSize {0};
 		for(int i = 0; i < changedCells.points.size(); i++)
-		{
+		{	
 			// Check if the point is inside the bounding box
 			if(changedCells.points[i].x < m_explorationMinX ||
 				changedCells.points[i].x > m_explorationMaxX ||
 				changedCells.points[i].y < m_explorationMinY ||
 				changedCells.points[i].y > m_explorationMaxY ||
 				changedCells.points[i].z < m_explorationMinZ ||
-				changedCells.points[i].z > m_explorationMaxZ) continue;
+				changedCells.points[i].z > m_explorationMaxZ) continue;			
 			// Get changed point
 			point3d changedCellPoint(
 				changedCells.points[i].x,
 				changedCells.points[i].y, 
 				changedCells.points[i].z);
-
 			// Transform from point to key
 			OcTreeKey changedCellKey;
 			if (!m_octree->coordToKeyChecked(changedCellPoint, changedCellKey)) 
@@ -137,6 +140,7 @@ namespace frontier_server
 		}
 	
 		m_logfile << "Number of frontiers:" << frontierSize << endl;
+		ROS_INFO("Number of frontiers: %d", frontierSize);
 		double total_time = (ros::WallTime::now() - startTime).toSec();
 		m_logfile << "findFrontier - used total: "<< total_time << " sec" <<endl;
 		return globalFrontierCells;
@@ -144,6 +148,7 @@ namespace frontier_server
 
 	void FrontierServer::updateGlobalFrontier(KeySet& globalFrontierCells)
 	{
+		// ROS_INFO("updateGlobalFrontier");
 		// m_logfile << "updateGlobalFrontier" << endl;
 		ros::WallTime startTime = ros::WallTime::now();
 		int frontierSize {0};
@@ -154,6 +159,7 @@ namespace frontier_server
 			frontierSize++;
 		}
 		m_logfile << "Number of global frontiers before:" << frontierSize << endl;
+		// ROS_INFO("Number of global frontiers before: %d", frontierSize);
 		bool unknownCellFlag {false};
 		bool freeCellFlag {false};
 		bool occupiedCellFlag {false};
@@ -192,6 +198,7 @@ namespace frontier_server
 			cell_iter++;				
 		}
 		m_logfile << "Number of deleted frontiers:" << deleted << endl;
+		// ROS_INFO("Number of deleted frontiers: %d", deleted);
 		// Calculate number of frontiers
 		frontierSize = 0;
 		for(KeySet::iterator iter = m_globalFrontierCellsUpdated.begin(), end = m_globalFrontierCellsUpdated.end();
@@ -200,7 +207,7 @@ namespace frontier_server
 			frontierSize++;
 		}
 		m_logfile << "Number of global frontiers after:" << frontierSize << endl;
-
+		// ROS_INFO("Number of global frontiers after: %d", frontierSize);
 		double total_time = (ros::WallTime::now() - startTime).toSec();
 		m_logfile << "updateGlobalFrontier - used total: "<< total_time << " sec" <<endl;
 	}
@@ -216,7 +223,6 @@ namespace frontier_server
       OcTreeNode* parentNodePtr = m_octree->search(*iter, m_explorationDepth);
       parentNodePtr->setValue(-1);
     }
-  
     // Iter over desire depth and ask if the node is frontier
 		int counter {0};
 		m_parentFrontierCells.clear();
@@ -260,7 +266,11 @@ namespace frontier_server
 		cluster->getMeanShiftClusters(
 			originalPointsVector, clusteredPointsVector, m_kernelBandwidth);
 		vector<OcTreeKey> clusterCellsKey {};
+		// ROS_INFO("num %d", clusterCellsKey.size());
 		pointVectorToKey(clusteredPointsVector, clusterCellsKey);
+		ROS_INFO("Numero di punti originali: %lu", originalPointsVector.size());
+		ROS_INFO("Numero di punti clusterizzati: %lu", clusteredPointsVector.size());
+
 		for (std::vector<OcTreeKey>::iterator iter = clusterCellsKey.begin();
 			iter != clusterCellsKey.end(); iter++)
 		{
@@ -268,6 +278,7 @@ namespace frontier_server
 		}
 		delete cluster;
 		m_logfile << "cluster_size: " << m_clusteredCells.size() << endl;
+		ROS_INFO("cluster_size: %d", m_clusteredCells.size());
 		// cout << "cluster_size: " << m_clusteredCells.size() << endl;
 		double total_time_evaluation = (ros::WallTime::now() - startTime_evaluation).toSec();
 		m_logfile << "clusterFrontier used total: " << total_time_evaluation << " sec" << endl;
@@ -284,10 +295,21 @@ namespace frontier_server
 		}
 	}
 
-	void FrontierServer::currentReferenceCallback(geometry_msgs::PoseStamped msg)
-	{
-		m_uavCurrentReference = msg;
+	// void FrontierServer::currentReferenceCallback(geometry_msgs::PoseStamped msg)
+	// {
+	// 	m_uavCurrentReference = msg;
+	// } 
+
+	void FrontierServer::currentReferenceCallback(const nav_msgs::Odometry::ConstPtr& msg)
+	{	
+		geometry_msgs::PoseStamped pose_stamped;
+		// pose_stamped.header = msg->header;
+		pose_stamped.header.frame_id = msg->header.frame_id;
+		pose_stamped.header.stamp = msg->header.stamp;
+		pose_stamped.pose = msg->pose.pose;
+		m_uavCurrentReference = pose_stamped;
 	} 
+
 
 	void FrontierServer::checkClusteredCells()
 	{
@@ -370,6 +392,8 @@ namespace frontier_server
 				return;
 			} 
 			clusterCellsKey.push_back(tempCellKey);
+
+			ROS_INFO("Clustered point %d: x=%f, y=%f, z=%f", i, points[i].x, points[i].y, points[i].z);
 		}
 	}
 
@@ -417,12 +441,13 @@ namespace frontier_server
 
 				case ExplorationState::CHECKFORFRONTIERS:
 					m_octomapServer.runDefault();
-					m_octomapServer.publishVolume();
+					m_octomapServer.publishVolume();				
 					m_uavCurrentPose = m_octomapServer.getCurrentUAVPosition();
-					if(!m_currentGoalReached)
-						ROS_WARN_STREAM_THROTTLE(3.0,
-						m_bestFrontierPoint.x() << " " << m_bestFrontierPoint.y() << " " 
-						<< m_bestFrontierPoint.z() << " -> Goal published!");
+					// if(!m_currentGoalReached)
+					// 	ROS_WARN_STREAM_THROTTLE(3.0,
+					// 	m_bestFrontierPoint.x() << " " << m_bestFrontierPoint.y() << " " 
+					// 	<< m_bestFrontierPoint.z() << " -> Goal published!");
+
 					// Update octomap
 					m_octree = m_octomapServer.getOcTree();	
 					// Get changed cells
@@ -432,43 +457,64 @@ namespace frontier_server
 					break;
 
 				case ExplorationState::ON:
+				// ROS_INFO("cerco le frontiere");
 					globalFrontierCells = findFrontier(m_changedCells);
 					// Delete frontiers that are explored now
-					updateGlobalFrontier(globalFrontierCells);	
+					updateGlobalFrontier(globalFrontierCells);
 					// Find frontiers on the upper level (m_explorationDepth) and publish it
 					searchForParentsAndPublish();
 					// If there is no parents switch to CHECKFORFRONTIERS
-					if (!m_parentFrontierCells.size() > 0) 
+					// if (!m_parentFrontierCells.size() > 0) 
+					// 	{
+					// 		setStateAndPublish(ExplorationState::CHECKFORFRONTIERS);
+					// 		ROS_INFO("no parents found");
+					// 	}	
+	
+					// // If the previous goal is reached
+					// else if (m_currentGoalReached)
+					// 	setStateAndPublish(ExplorationState::POINTREACHED);
+					// else 
+					// 	setStateAndPublish(ExplorationState::CHECKFORFRONTIERS);
+					// break;
+
+					if(m_parentFrontierCells.empty())
+					{
+							setStateAndPublish(ExplorationState::CHECKFORFRONTIERS);
+							ROS_INFO("no parents found");
+					}
+					else
+					{
+						clusterFrontierAndPublish();
+						// ROS_INFO("ho pubblicato il cluster frontiere");
 						setStateAndPublish(ExplorationState::CHECKFORFRONTIERS);
-					// If the previous goal is reached
-					else if (m_currentGoalReached)
-						setStateAndPublish(ExplorationState::POINTREACHED);
-					else 
-						setStateAndPublish(ExplorationState::CHECKFORFRONTIERS);
+					}
 					break;
 
 				case ExplorationState::POINTREACHED:
-					// Find Best Frontier
-					m_currentGoalReached = false;
-					// Delete candidates that are too close to prevoius assigned points
+					// // Find Best Frontier
+					// m_currentGoalReached = false;
+					// // Delete candidates that are too close to prevoius assigned points
 					
-					clusterFrontierAndPublish();
-					point3d currentPoint3d(m_uavCurrentPose.position.x, 
-						m_uavCurrentPose.position.y, m_uavCurrentPose.position.z);
-					// Simulation bag
-					m_bestFrontierPoint = 
-							m_bestFrontierServer.bestFrontierInfGain(m_octree, currentPoint3d, m_clusteredCellsUpdated);
+					// clusterFrontierAndPublish();
+					// ROS_INFO("ho pubblicato il clustered frontiere");
+					
+					// point3d currentPoint3d(m_uavCurrentPose.position.x, 
+					// 	m_uavCurrentPose.position.y, m_uavCurrentPose.position.z);
+					// // Simulation bag
 					// m_bestFrontierPoint = 
-					// 	m_bestFrontierServer.closestFrontier(m_octree, currentPoint3d, m_clusteredCellsUpdated);
-					m_logfile << "Best frontier: " << m_bestFrontierPoint << endl;
+					// 		m_bestFrontierServer.bestFrontierInfGain(m_octree, currentPoint3d, m_clusteredCellsUpdated);
+					// // m_bestFrontierPoint = 
+					// // 	m_bestFrontierServer.closestFrontier(m_octree, currentPoint3d, m_clusteredCellsUpdated);
+					// m_logfile << "Best frontier: " << m_bestFrontierPoint << endl;
 					
-					m_allUAVGoals.push_back(m_bestFrontierPoint);
-					cout << "Best frontier: " << m_bestFrontierPoint << endl;
-					publishBestFrontier();
-					publishUAVGoal(m_bestFrontierPoint);
-					ros::Duration(0.05).sleep();
-					setStateAndPublish(ExplorationState::CHECKFORFRONTIERS);
-					// }
+					// m_allUAVGoals.push_back(m_bestFrontierPoint);
+					// cout << "Best frontier: " << m_bestFrontierPoint << endl;
+					// publishBestFrontier();
+					// publishUAVGoal(m_bestFrontierPoint);
+					// ros::Duration(0.05).sleep();
+					// setStateAndPublish(ExplorationState::CHECKFORFRONTIERS);
+					// // }
+					ROS_INFO("Exploration::POINTREACHED should not be found");
 					break;
 			}
 			ros::WallTime currentTime = ros::WallTime::now();
@@ -479,13 +525,18 @@ namespace frontier_server
 
 	void FrontierServer::publishParentFrontier()
 	{
+		// ROS_INFO("Calling publishParentFrontier");
 		m_logfile << "publishFrontier" << endl;
 		// init markers for free space:
 		visualization_msgs::MarkerArray frontierNodesVis;
 		// each array stores all cubes of a different size, one for each depth level:
 		frontierNodesVis.markers.resize(m_explorationDepth + 1);
+
+		// ROS_INFO("Octree size: %lu", m_octree->size());
+    	// ROS_INFO("Parent frontier cells size: %lu", m_parentFrontierCells.size());
 		
 		int counter {0};
+		int numFrontierNodes {0};
 		for (OcTree::iterator it = m_octree->begin(m_explorationDepth),end = m_octree->end(); it != end; ++it)
 		{
 			bool isfron = false;
@@ -493,6 +544,7 @@ namespace frontier_server
 			{
 				octomap::point3d fpoint;
 				fpoint = m_octree->keyToCoord(*iter);
+				// ROS_INFO("Frontier point: (%f, %f, %f)", fpoint.x(), fpoint.y(), fpoint.z());
 				
 				if (fabs(it.getX() - fpoint.x()) <= m_resolution /2 &&
 					fabs(it.getY() - fpoint.y()) <= m_resolution /2 &&
@@ -518,8 +570,12 @@ namespace frontier_server
 				cubeCenter.z = z;
 
 				frontierNodesVis.markers[idx].points.push_back(cubeCenter);
+				numFrontierNodes++;
 			} 
 		}
+
+		// ROS_INFO("Number of frontier nodes: %d", numFrontierNodes);
+
 		// finish MarkerArray:
 		std_msgs::ColorRGBA colorFrontier;
 		colorFrontier.r = 1.0;
@@ -528,23 +584,34 @@ namespace frontier_server
 		colorFrontier.a = 1.0;
 		for (unsigned i= 0; i < frontierNodesVis.markers.size(); ++i)
 		{
-			double size = m_octree->getNodeSize(i);
+			double size = m_octree->getNodeSize(i)*2;
 
 			frontierNodesVis.markers[i].header.frame_id = m_worldFrameId;
 			frontierNodesVis.markers[i].header.stamp = ros::Time::now();
-			frontierNodesVis.markers[i].ns = "red";
+			frontierNodesVis.markers[i].ns = "first";
 			frontierNodesVis.markers[i].id = i;
 			frontierNodesVis.markers[i].type = visualization_msgs::Marker::CUBE_LIST;
 			frontierNodesVis.markers[i].scale.x = size;
 			frontierNodesVis.markers[i].scale.y = size;
 			frontierNodesVis.markers[i].scale.z = size;
 			frontierNodesVis.markers[i].color = colorFrontier;
+			// frontierNodesVis.markers[i].pose.orientation.x=0;
+      		// frontierNodesVis.markers[i].pose.orientation.y=0;
+      		// frontierNodesVis.markers[i].pose.orientation.z=0;
+      		frontierNodesVis.markers[i].pose.orientation.w = 1;
 
 			if (frontierNodesVis.markers[i].points.size() > 0)
+			{
 				frontierNodesVis.markers[i].action = visualization_msgs::Marker::ADD;
+           		// ROS_INFO("Adding marker %d with %lu points", i, frontierNodesVis.markers[i].points.size());		
+			}
 			else
+			{
 				frontierNodesVis.markers[i].action = visualization_msgs::Marker::DELETE;
+				// ROS_INFO("Deleting empty marker %d", i);
+			}
 		}
+		// ROS_INFO("Publishing %lu markers", frontierNodesVis.markers.size());
 		m_markerFrontierPub.publish(frontierNodesVis);
 	}
 
@@ -557,21 +624,25 @@ namespace frontier_server
 		frontierNodesVis.markers.resize(m_explorationDepth + 1);
 
 		for (OcTree::iterator it = m_octree->begin(m_explorationDepth), end = m_octree->end(); it != end; ++it)
-		{
+		{	
 			bool isfron = false;
 			for(KeySet::iterator iter = m_clusteredCellsUpdated.begin(), end = m_clusteredCellsUpdated.end(); iter!= end; ++iter)
-			{
+			{		
 				octomap::point3d fpoint;
 				fpoint = m_octree->keyToCoord(*iter);
 				if (fabs(it.getX() - fpoint.x()) <= m_resolution /2 &&
 					fabs(it.getY() - fpoint.y()) <= m_resolution /2 &&
-					fabs(it.getZ() - fpoint.z()) <= m_resolution /2) isfron = true;
+					fabs(it.getZ() - fpoint.z()) <= m_resolution /2) 
+					{
+						isfron = true;
+					}
 			}
 			if (isfron)
 			{
 				double x = it.getX();
 				double y = it.getY();
 				double z = it.getZ();
+				// ROS_INFO("x=%f, y=%f, z=%f",x,y,z);
 	
 				unsigned idx = it.getDepth();
 				assert(idx < frontierNodesVis.markers.size());
@@ -597,18 +668,31 @@ namespace frontier_server
 
 			frontierNodesVis.markers[i].header.frame_id = m_worldFrameId;
 			frontierNodesVis.markers[i].header.stamp = ros::Time::now();
-			frontierNodesVis.markers[i].ns = "red";
+			frontierNodesVis.markers[i].ns = "first";
 			frontierNodesVis.markers[i].id = i;
 			frontierNodesVis.markers[i].type = visualization_msgs::Marker::CUBE_LIST;
 			frontierNodesVis.markers[i].scale.x = size;
 			frontierNodesVis.markers[i].scale.y = size;
 			frontierNodesVis.markers[i].scale.z = size;
 			frontierNodesVis.markers[i].color = colorClusteredFrontier;
+			// frontierNodesVis.markers[i].pose.orientation.x=0;
+      		// frontierNodesVis.markers[i].pose.orientation.y=0;
+      		// frontierNodesVis.markers[i].pose.orientation.z=0;
+      		frontierNodesVis.markers[i].pose.orientation.w = 1;
 
 			if (frontierNodesVis.markers[i].points.size() > 0)
 				frontierNodesVis.markers[i].action = visualization_msgs::Marker::ADD;
 			else
 				frontierNodesVis.markers[i].action = visualization_msgs::Marker::DELETE;
+
+			// ROS_INFO("Contenuto di frontierNodesVis.markers[%u].points:", i);
+        	// 	for (size_t j = 0; j < frontierNodesVis.markers[i].points.size(); ++j)
+        	// 	{
+            // 		ROS_INFO("Punto %zu: x=%f, y=%f, z=%f",
+            //          		j, frontierNodesVis.markers[i].points[j].x,
+            //          		frontierNodesVis.markers[i].points[j].y,
+            //          		frontierNodesVis.markers[i].points[j].z);
+			// 	}
 		}
 		m_markerClusteredFrontierPub.publish(frontierNodesVis);
 	}
@@ -632,7 +716,7 @@ namespace frontier_server
 
 		frontier_goal.header.frame_id = m_worldFrameId;
 		frontier_goal.header.stamp = ros::Time::now();
-		frontier_goal.ns = "red";
+		frontier_goal.ns = "first";
 		frontier_goal.type = visualization_msgs::Marker::CUBE_LIST;
 		frontier_goal.scale.x = size;
 		frontier_goal.scale.y = size;

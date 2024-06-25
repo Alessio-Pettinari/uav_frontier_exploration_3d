@@ -50,6 +50,9 @@ class MSCluster : public MeanShift {
         // Find min element
         int minElementIndex = std::min_element(
         vectorOfDistances.begin(), vectorOfDistances.end()) - vectorOfDistances.begin();
+
+        printf("Cluster %d: Nearest point index %d with distance %f\n", 
+               i, minElementIndex, vectorOfDistances[minElementIndex]);
         cluster_points.push_back(points[minElementIndex]);
       }
     }

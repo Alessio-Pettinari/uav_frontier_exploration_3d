@@ -12,7 +12,7 @@
 
   <buildtool_depend>catkin</buildtool_depend>
   <build_depend>geometry_msgs</build_depend>
-  <build_depend>geographic_msgs</build_depend>
+  <!-- <build_depend>geographic_msgs</build_depend> -->
   <build_depend>nav_msgs</build_depend>
   <build_depend>roscpp</build_depend>
   <build_depend>rospy</build_depend>
@@ -30,9 +30,10 @@
   <build_depend>mean_shift_clustering</build_depend>
   <build_depend>gazebo</build_depend>
   <build_depend>gazebo_ros</build_depend>
+  <build_depend>libdlib-dev</build_depend>
 
   <run_depend>geometry_msgs</run_depend>
-  <run_depend>geographic_msgs</run_depend>
+  <!-- <run_depend>geographic_msgs</run_depend> -->
   <run_depend>nav_msgs</run_depend>
   <run_depend>roscpp</run_depend>
   <run_depend>rospy</run_depend>

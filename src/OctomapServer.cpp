@@ -39,10 +39,10 @@ namespace octomap_server
 			std_msgs::Float64MultiArray>("octomap_volume", 1);
 
 		// Initialize subscribers
-		m_pointCloudSub = m_nh.subscribe("cloud_in", 1, 
-			&OctomapServer::pointCloudCallback, this);
-		m_uavGlobalPoseSub = m_nh.subscribe("odometry", 1, 
-			&OctomapServer::globalPoseCallback, this);	
+		m_pointCloudSub = m_nh.subscribe("/first/depth/points", 1, 
+			&OctomapServer::pointCloudCallback, this);   // cloud_in
+		m_uavGlobalPoseSub = m_nh.subscribe("/first/odom_ft", 1, 
+			&OctomapServer::globalPoseCallback, this);	 // odometry
 		m_saveOctomapServer = m_nh.advertiseService(
     	"exploration/save_octomap", &OctomapServer::saveOctomapServiceCb, this);	
 	}
@@ -88,6 +88,7 @@ namespace octomap_server
 	{
 		m_currPointCloud = *cloud;
 		m_pointCloudReceivedFlag = true;
+		// ROS_INFO("Point cloud received");
 	}
 
 	void OctomapServer::globalPoseCallback(
@@ -263,10 +264,9 @@ namespace octomap_server
 
 	void OctomapServer::runDefault()
 	{
-		ros::spinOnce(); 	
+		ros::spinOnce(); 
 		tf::StampedTransform sensorToWorldTf;
 		PCLPointCloud pc;
-		
 		transformAndFilterPointCloud(sensorToWorldTf, pc);
 		insertScan(pc);
 		publishOccAndFree();
@@ -276,10 +276,12 @@ namespace octomap_server
 	void OctomapServer::transformAndFilterPointCloud(
 		tf::StampedTransform& sensorToWorldTf, PCLPointCloud& pc)
 	{
-		while (!m_pointCloudReceivedFlag) 
+		// *A*: Attende finchè la point cloud non viene ricevuta
+		while (!m_pointCloudReceivedFlag) // *A*: m_pointCloudReceivedFlag viene aggiornata nella funzione 'pointCloudCallback'
+										  // *A*: che viene chiamata quando un nuovo messaggio viene ricevuto su un topic
 		{
-			ros::spinOnce();
-			ros::Duration(0.2).sleep();
+			ros::spinOnce(); // *A*: Esegue il callback ROS per processare i messaggi in arrivo (la point cloud) e chiamare le funzioni di callback appropriate
+			ros::Duration(0.2).sleep(); //*A*: attende un istante, per evitare di occupare troppa CPU 
 		}
 		// Input cloud for filtering and ground-detection
 		pcl::fromROSMsg(m_currPointCloud, pc);
@@ -459,13 +461,17 @@ namespace octomap_server
 
 			occupiedNodesVis.markers[i].header.frame_id = m_worldFrameId;
 			occupiedNodesVis.markers[i].header.stamp = ros::Time::now();
-			occupiedNodesVis.markers[i].ns = "red";
+			occupiedNodesVis.markers[i].ns = "first";
 			occupiedNodesVis.markers[i].id = i;
 			occupiedNodesVis.markers[i].type = visualization_msgs::Marker::CUBE_LIST;
 			occupiedNodesVis.markers[i].scale.x = size;
 			occupiedNodesVis.markers[i].scale.y = size;
 			occupiedNodesVis.markers[i].scale.z = size;
 			occupiedNodesVis.markers[i].color = colorOcc;
+			occupiedNodesVis.markers[i].pose.orientation.x=0;
+      		occupiedNodesVis.markers[i].pose.orientation.y=0;
+      		occupiedNodesVis.markers[i].pose.orientation.z=0;
+      		occupiedNodesVis.markers[i].pose.orientation.w=1;
 
 			if (occupiedNodesVis.markers[i].points.size() > 0)
 				occupiedNodesVis.markers[i].action = visualization_msgs::Marker::ADD;
@@ -481,13 +487,17 @@ namespace octomap_server
 
 			freeNodesVis.markers[i].header.frame_id = m_worldFrameId;
 			freeNodesVis.markers[i].header.stamp = ros::Time::now();
-			freeNodesVis.markers[i].ns = "red";
+			freeNodesVis.markers[i].ns = "first";
 			freeNodesVis.markers[i].id = i;
 			freeNodesVis.markers[i].type = visualization_msgs::Marker::CUBE_LIST;
 			freeNodesVis.markers[i].scale.x = size;
 			freeNodesVis.markers[i].scale.y = size;
 			freeNodesVis.markers[i].scale.z = size;
 			freeNodesVis.markers[i].color = colorFree;
+			freeNodesVis.markers[i].pose.orientation.x=0;
+      		freeNodesVis.markers[i].pose.orientation.y=0;
+      		freeNodesVis.markers[i].pose.orientation.z=0;
+      		freeNodesVis.markers[i].pose.orientation.w=1;
 
 			if (freeNodesVis.markers[i].points.size() > 0)
 				freeNodesVis.markers[i].action = visualization_msgs::Marker::ADD;

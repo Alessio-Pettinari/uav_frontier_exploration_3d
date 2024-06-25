@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(uav_frontier_exploration_3d)
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+SET(CMAKE_CXX_STANDARD 14)
+
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
@@ -17,7 +19,7 @@ find_package(catkin REQUIRED COMPONENTS
   pcl_ros
   pcl_conversions
   dynamic_reconfigure
-  geographic_msgs
+#   geographic_msgs
   octomap_msgs
   octomap_ros
   nodelet
@@ -38,7 +40,7 @@ find_package(cmake_modules REQUIRED)
 generate_messages(
     DEPENDENCIES
     std_msgs
-    geographic_msgs
+    # geographic_msgs
 )
 
 catkin_package(

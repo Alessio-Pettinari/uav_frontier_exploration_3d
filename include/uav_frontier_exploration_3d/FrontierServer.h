@@ -5,7 +5,7 @@
 #include <uav_frontier_exploration_3d/BestFrontier.h>
 //Mean shift clustering
 #include <uav_frontier_exploration_3d/ClusteringAlgorithm.h>
-#include <dlib/clustering.h>
+// #include <dlib/clustering.h>
 #include <std_srvs/SetBool.h>
 #include <std_msgs/Int32.h>
 
@@ -49,7 +49,11 @@ namespace frontier_server
       void updateGlobalFrontier(KeySet& globalFrontierCell);
       void clusterFrontierAndPublish();
       void pointReachedCallback(std_msgs::Bool msg);
-      void currentReferenceCallback(geometry_msgs::PoseStamped msg);
+      // void currentReferenceCallback(geometry_msgs::PoseStamped msg);
+      void currentReferenceCallback(const nav_msgs::Odometry::ConstPtr& msg);
+      // void currentReferenceCallback(geometry_msgs::PoseWithCovarianceStamped msg);
+
+
       void checkClusteredCells();
       bool isPointAlreadyAssigned(point3d point);
     
