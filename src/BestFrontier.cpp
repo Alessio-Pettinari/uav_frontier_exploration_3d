@@ -58,9 +58,12 @@ namespace best_frontier
 			double x = tempCellPosition.x();
 			double y = tempCellPosition.y();
 			double z = tempCellPosition.z();
-			
 			candidates.push_back(make_pair<point3d, point3d>(point3d(x, y, z), point3d(0.0, 0.0, 0.0)));	
 		}
+
+		ROS_INFO_STREAM("Number of candidates: " << candidates.size());
+    	ROS_INFO_STREAM("Number of cells: " << Cells.size());
+    	ROS_INFO_STREAM("Current position: " << currentPosition);
 
 		// If the cluster point is not in octree
 		if (candidates.size() == 0)
@@ -78,12 +81,17 @@ namespace best_frontier
 			double unknownVolume = calcMIBox(octree, currCandidate.first);
 			double tempDistance = calculateDistance(currentPosition, currCandidate.first);
 			double kGain = m_kGain;
-			InfGainVector[i] = kGain * unknownVolume * exp(- m_lambda * tempDistance); 
+
+			InfGainVector[i] = (kGain * unknownVolume * exp(- m_lambda * tempDistance))+4*tempDistance; 
+
+			ROS_INFO_STREAM("Candidate " << i << " - InfGain: " << InfGainVector[i]);
+			ROS_INFO_STREAM("Distance " << i << " -d:" << tempDistance);
 		}
 
 		// Find max element index
 		int maxElementIndex = 
 			max_element(InfGainVector.begin(), InfGainVector.end()) - InfGainVector.begin();
+		ROS_INFO_STREAM("Max element index: " << maxElementIndex);
 	
 		// Define best frontier
 		point3d bestFrontier = point3d(
@@ -91,9 +99,17 @@ namespace best_frontier
 			candidates[maxElementIndex].first.y(),
 			candidates[maxElementIndex].first.z());
 		m_logfile << "Best frontier point: " << bestFrontier << endl;
+		ROS_INFO_STREAM("Best frontier point: " << bestFrontier);
+
+		for (int i = 0; i < candidates.size(); i++)
+		{
+			ROS_INFO_STREAM("Candidate " << i << " - XYZ: " << candidates[i].first);
+			ROS_INFO_STREAM("Candidate " << i << " - InfGain: " << InfGainVector[i]);
+		}
+
+
 		double total_time_frontier = (ros::WallTime::now() - startTime_frontier).toSec();
 		m_logfile << "Best frontier used total: "<< total_time_frontier << " sec" << endl;
-
 		return bestFrontier;
 	}
 

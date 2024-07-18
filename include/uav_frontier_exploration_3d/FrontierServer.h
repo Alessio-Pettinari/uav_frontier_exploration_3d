@@ -88,15 +88,16 @@ namespace frontier_server
       octomap::OcTree* m_octree {NULL};
       octomap_server::OctomapServer m_octomapServer;
 
-      std::string m_worldFrameId, m_baseFrameId; 
+      std::string m_worldFrameId, m_baseFrameId;  
 
       unsigned m_treeDepth, m_explorationDepth;
       double m_rate {1}, m_resolution, m_explorationRadius, m_explorationMinX,
         m_explorationMaxX, m_explorationMinY, m_explorationMaxY,m_explorationMinZ,
-        m_explorationMaxZ, m_kernelBandwidth;
+        m_explorationMaxZ, m_kernelBandwidth, m_thresold_goal;
 
       bool m_currentGoalReached {true};
       bool m_explorationToggled {false};
+      bool m_IsUGV {false};
 
       string m_configFilename;
       

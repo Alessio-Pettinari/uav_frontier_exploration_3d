@@ -1,0 +1,62 @@
+
+exploration:
+  global_frame: "map_first"
+  base_link_frame: "first/base_link"
+  # Exploration depth of octomap tree. 16 is best resolution, slowest exploration
+  # Save frontiers on that level
+  # experience shows that there is significant increase in search time by 
+  # setting this parameter to < 16)
+  depth: 16
+  # if the candidate point is inside the radius of the previous visited points,
+  # the candidate is deleted from the candidate list
+  radius: 1 # 5.5
+  # bounding box: necessary to limit the simulation 
+  # scenario (smaller than actual gazebo scenario)
+  # used for frontier detection
+  bbx_minX: -60 #-500.0
+  bbx_maxX: 60 #500.0
+  bbx_minY: -60 #-200.0
+  bbx_maxY: 60 #200.0
+  bbx_minZ: 0.0 #0.1 
+  bbx_maxZ: 7.0 #10
+
+  # Length of one side of the cube inside which we calculate information gain
+  box_length: 20 #8.0
+  # Gain to scale exp function in information gain
+  k_gain: 100.0
+  # Constant; small lambda means that motion is cheap and gives priority
+  lambda: 0.1386 
+
+  # Threshold for considering the goal achieved
+  thresold_goal: 1
+
+
+  # Total volume of the environment for exploration in m^3
+  volume: 50000
+sensor_model:
+  # Field of view in degrees
+  horizontalFOV: 60
+  verticalFOV: 46   # vedi formula quaderno per calcolarla
+  # VelodyneVLP16 max range in meters
+  max_range: 5 #da ridurre
+  pitch_angle: 0.0  # 0 perchè la camerà è montata orizzontalmente: si vede in rosbot.xacro poichè la rotazione
+                    #  (rpy) tra parent (body_link) e child (camera_lin) è nulla
+
+  probability_hit: 0.7
+  probability_miss: 0.4
+  clamping_thres_min: 0.12 
+  clamping_thres_max: 0.97
+  
+octomap:
+  resolution: 0.1 #0.05
+  octree_depth: 16
+  # Filename and file path for saving octomap
+  filename: "octomap_large.binvox.bt"
+  file_path: $(find uav_frontier_exploration_3d)/data/"
+  # Height voxel floor:  Set to disregard the floor as occupied voxels
+  height_voxel_floor: 0.2
+
+clustering:
+  # A higher bandwidth will result in fewer but larger clusters
+  kernel_bandwidth: 0.01 #2
+  IsUGV: True

@@ -37,12 +37,13 @@ namespace octomap_server
 		m_binaryMapPub = m_nh.advertise<Octomap>("octomap_binary", 1, false);
 		m_pubVolumes = m_nh. advertise<
 			std_msgs::Float64MultiArray>("octomap_volume", 1);
+		m_obsVoxelPub = m_nh.advertise<geometry_msgs::PoseArray>("obstacle_voxel", 1, false);
 
 		// Initialize subscribers
-		m_pointCloudSub = m_nh.subscribe("/first/depth/points", 1, 
-			&OctomapServer::pointCloudCallback, this);   // cloud_in
-		m_uavGlobalPoseSub = m_nh.subscribe("/first/odom_ft", 1, 
-			&OctomapServer::globalPoseCallback, this);	 // odometry
+		m_pointCloudSub = m_nh.subscribe("cloud_in", 1, 
+			&OctomapServer::pointCloudCallback, this);   
+		m_uavGlobalPoseSub = m_nh.subscribe("odometry", 1, 
+			&OctomapServer::globalPoseCallback, this);	
 		m_saveOctomapServer = m_nh.advertiseService(
     	"exploration/save_octomap", &OctomapServer::saveOctomapServiceCb, this);	
 	}
@@ -79,6 +80,9 @@ namespace octomap_server
 		m_treeDepth = config["octomap"]["octree_depth"].as<unsigned>();
 		m_filename = config["octomap"]["filename"].as<string>();
 		m_filePath = config["octomap"]["file_path"].as<string>();
+		m_heightFloor = config["octomap"]["height_voxel_floor"].as<double>();
+
+		// m_ns = config["robot"]["model"].as<string>();
 
 		return true;
 	}
@@ -88,13 +92,17 @@ namespace octomap_server
 	{
 		m_currPointCloud = *cloud;
 		m_pointCloudReceivedFlag = true;
-		// ROS_INFO("Point cloud received");
+		// ROS_INFO("Data Size: %zu", cloud->data.size());
 	}
 
 	void OctomapServer::globalPoseCallback(
 		const nav_msgs::Odometry::ConstPtr& msg)
 	{
 		m_uavCurrentPose = msg->pose.pose;
+		// ROS_INFO("Position -> x: %.3f, y: %.3f, z: %.3f", 
+        //       m_uavCurrentPose.position.x, 
+        //       m_uavCurrentPose.position.y, 
+        //       m_uavCurrentPose.position.z);
 	}
 
 	bool OctomapServer::saveOctomapServiceCb(
@@ -387,6 +395,11 @@ namespace octomap_server
 		// Each array stores all cubes of a different size, one for each depth level:
 		occupiedNodesVis.markers.resize(m_treeDepth + 1);
 
+		// Init	obstacle_voxel_array 	
+		geometry_msgs::PoseArray obstacle_voxel_array;
+		obstacle_voxel_array.header.frame_id = m_worldFrameId;
+		obstacle_voxel_array.header.stamp = ros::Time::now();
+
 		// Traverse all leafs in the tree:
 		for (OcTree::iterator it = m_octree->begin(m_maxTreeDepth),
 			end = m_octree->end(); it != end; ++it)
@@ -407,7 +420,20 @@ namespace octomap_server
 						ROS_DEBUG("Ignoring single speckle at (%f,%f,%f)", x, y, z);
 						continue;
 					} // else: current octree node is no speckle, send it out
-							
+
+					// Control to remove voxel floor as an obstacle
+					if (z > m_heightFloor)
+					{
+						// Add obstacle positionPoses;
+						geometry_msgs::Pose obs_poses;
+						obs_poses.position.x = x;
+						obs_poses.position.y = y;
+						obs_poses.position.z = z;
+						// ROS_INFO("Ostacolo: %f, %f, %f", x, y, z);
+					
+						obstacle_voxel_array.poses.push_back(obs_poses);
+					}
+						
 					// Create marker:
 					unsigned idx = it.getDepth();
 					assert(idx < occupiedNodesVis.markers.size());
@@ -419,7 +445,9 @@ namespace octomap_server
 
 					occupiedNodesVis.markers[idx].points.push_back(cubeCenter);
 				}
-			} 
+				
+			} 	
+
 			else
 			{ 
 				// Node not occupied => mark as free in 2D map if unknown so far
@@ -444,6 +472,9 @@ namespace octomap_server
 			}
 		}
 
+		m_obsVoxelPub.publish(obstacle_voxel_array);
+
+
 		// Finish MarkerArray:
 		std_msgs::ColorRGBA colorOcc, colorFree;
 		colorOcc.r = 0.0;
@@ -461,7 +492,7 @@ namespace octomap_server
 
 			occupiedNodesVis.markers[i].header.frame_id = m_worldFrameId;
 			occupiedNodesVis.markers[i].header.stamp = ros::Time::now();
-			occupiedNodesVis.markers[i].ns = "first";
+			occupiedNodesVis.markers[i].ns = "namespace";
 			occupiedNodesVis.markers[i].id = i;
 			occupiedNodesVis.markers[i].type = visualization_msgs::Marker::CUBE_LIST;
 			occupiedNodesVis.markers[i].scale.x = size;
@@ -487,7 +518,7 @@ namespace octomap_server
 
 			freeNodesVis.markers[i].header.frame_id = m_worldFrameId;
 			freeNodesVis.markers[i].header.stamp = ros::Time::now();
-			freeNodesVis.markers[i].ns = "first";
+			freeNodesVis.markers[i].ns = "namespace";
 			freeNodesVis.markers[i].id = i;
 			freeNodesVis.markers[i].type = visualization_msgs::Marker::CUBE_LIST;
 			freeNodesVis.markers[i].scale.x = size;

@@ -1,0 +1,26 @@
+<launch>
+  <arg name="rate" default="1"/>
+  <arg name="namespace" default="first"/>
+  <arg name="odometry" default="/first/odom_ft"/>
+  <arg name="cloud_in" default="/first/depth/points"/>
+  <arg name="point_reached" default="exploration/point_reached"/>
+  <arg name="config_filename" default="$(find uav_frontier_exploration_3d)/config/UGV.yaml"/>
+  
+  <group ns="$(arg namespace)">
+    <node name="frontier_server_node" pkg="uav_frontier_exploration_3d" type="frontier_server_node" output="screen">
+      <param name="rate" value="$(arg rate)"/>
+      <param name="exploration_config_filename" value="$(arg config_filename)"/>
+      <remap from="cloud_in" to="$(arg cloud_in)"/>
+      <remap from="odometry" to="$(arg odometry)"/>
+      <remap from="namespace" to="$(arg namespace)"/>
+      <!-- <remap from="point_reached" to="$(arg point_reached)"/> -->
+    </node>
+   </group>
+
+  <!-- <node pkg="uav_frontier_exploration_3d" type="ClusteringVoxel.py" name="ClusteringVoxel" output="screen">
+    <param name="quantile" value="0.1" />  
+  </node> -->
+
+
+</launch>
+

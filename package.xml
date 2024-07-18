@@ -31,6 +31,7 @@
   <build_depend>gazebo</build_depend>
   <build_depend>gazebo_ros</build_depend>
   <build_depend>libdlib-dev</build_depend>
+  <build_depend>std_srvs</build_depend>
 
   <run_depend>geometry_msgs</run_depend>
   <!-- <run_depend>geographic_msgs</run_depend> -->
@@ -51,6 +52,8 @@
   <run_depend>mean_shift_clustering</run_depend>
   <run_depend>gazebo</run_depend>
   <run_depend>gazebo_ros</run_depend>
+  <run_depend>std_srvs</run_depend>
+
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>

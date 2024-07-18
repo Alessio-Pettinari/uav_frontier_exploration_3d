@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
+cmake_policy(SET CMP0048 NEW)
 project(uav_frontier_exploration_3d)
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 SET(CMAKE_CXX_STANDARD 14)
@@ -24,6 +25,7 @@ find_package(catkin REQUIRED COMPONENTS
   octomap_ros
   nodelet
   mean_shift_clustering
+  std_srvs
 )
 find_package(Boost)
 find_package(PCL 1.8 REQUIRED COMPONENTS
@@ -37,16 +39,22 @@ find_package(octomap 1.7 REQUIRED)
 add_definitions(-DOCTOMAP_NODEBUGOUT)
 find_package(cmake_modules REQUIRED)
 
+add_message_files(
+    FILES
+    ClusterInfo.msg
+)
+
 generate_messages(
     DEPENDENCIES
     std_msgs
     # geographic_msgs
+    geometry_msgs
 )
 
 catkin_package(
     INCLUDE_DIRS include
     LIBRARIES frontier_exploration_3d
-    CATKIN_DEPENDS octomap_ros pcl_ros
+    CATKIN_DEPENDS octomap_ros pcl_ros message_runtime std_msgs geometry_msgs
     DEPENDS octomap PCL)
 
 include_directories(
@@ -71,7 +79,7 @@ add_library(frontier_exploration_3d
     src/FrontierServer.cpp)
 target_link_libraries(frontier_exploration_3d ${LINK_LIBS} yaml-cpp)
 
-add_executable(frontier_server_node src/FrontierServerNode.cpp src/OctomapServer.cpp src/BestFrontier.cpp)
+add_executable(frontier_server_node src/FrontierServerNode.cpp src/OctomapServer.cpp src/BestFrontier.cpp )
 target_link_libraries(frontier_server_node frontier_exploration_3d ${LINK_LIBS})
 
 install(DIRECTORY include/${PROJECT_NAME}/
@@ -83,4 +91,12 @@ install(DIRECTORY launch/
     DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
     PATTERN ".svn" EXCLUDE
 )
+
+catkin_install_python(PROGRAMS
+    scripts/ClusteringVoxel.py
+    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+
+catkin_install_python(PROGRAMS
+scripts/service_caller.py
+DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
       

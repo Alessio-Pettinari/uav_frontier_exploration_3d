@@ -11,6 +11,7 @@
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/PoseArray.h>
 #include <visualization_msgs/MarkerArray.h>
 
 #include <pcl/point_types.h>
@@ -92,7 +93,7 @@ namespace octomap_server
         std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
 
       ros::NodeHandle m_nh;
-      ros::Publisher  m_markerOccPub, m_markerFreePub, m_binaryMapPub, m_pubVolumes;
+      ros::Publisher  m_markerOccPub, m_markerFreePub, m_binaryMapPub, m_pubVolumes, m_obsVoxelPub;
       ros::Subscriber m_pointCloudSub, m_uavGlobalPoseSub;
       ros::ServiceServer m_saveOctomapServer;
       tf::TransformListener m_tfListener;
@@ -110,7 +111,7 @@ namespace octomap_server
 
       unsigned m_treeDepth, m_maxTreeDepth;
       double m_resolution, m_probHit, m_probMiss, m_thresMin, m_thresMax, m_maxRange,
-        m_totalVol;
+        m_totalVol, m_heightFloor;
 
       double m_pointcloudMinZ {-std::numeric_limits<double>::max()},
         m_pointcloudMaxZ {std::numeric_limits<double>::max()},

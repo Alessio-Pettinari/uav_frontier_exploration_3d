@@ -1,0 +1,9 @@
+<launch>
+    <!-- File launch frontier exploration-->
+    <include file="$(find uav_frontier_exploration_3d)/launch/frontier_server_UGV.launch" />
+    <include file="$(find uav_frontier_exploration_3d)/launch/frontier_server_UAV.launch" />
+
+    <!-- Service Caller -->
+    <node pkg="uav_frontier_exploration_3d" type="service_caller.py" name="service_caller" output="screen" launch-prefix="bash -c 'sleep 5; $0 $@'" />
+
+</launch>
