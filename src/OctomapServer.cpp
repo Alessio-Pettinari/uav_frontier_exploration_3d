@@ -33,11 +33,13 @@ namespace octomap_server
 		m_markerOccPub = m_nh.advertise<
 			visualization_msgs::MarkerArray>("occupied_cells_vis_array", 1, false);
 		m_markerFreePub = m_nh.advertise<
-			visualization_msgs::MarkerArray>("free_cells_vis_array", 1, false);
+			visualization_msgs::MarkerArray>("free_cells_vis_array", 1, true);
 		m_binaryMapPub = m_nh.advertise<Octomap>("octomap_binary", 1, false);
 		m_pubVolumes = m_nh. advertise<
 			std_msgs::Float64MultiArray>("octomap_volume", 1);
-		m_obsVoxelPub = m_nh.advertise<geometry_msgs::PoseArray>("obstacle_voxel", 1, false);
+		m_obsVoxelPub = m_nh.advertise<geometry_msgs::PoseArray>("obstacle_voxel", 1, true);
+		m_freeVoxelPub = m_nh.advertise<geometry_msgs::PoseArray>("free_voxel", 1, true);
+
 
 		// Initialize subscribers
 		m_pointCloudSub = m_nh.subscribe("cloud_in", 1, 
@@ -45,7 +47,7 @@ namespace octomap_server
 		m_uavGlobalPoseSub = m_nh.subscribe("odometry", 1, 
 			&OctomapServer::globalPoseCallback, this);	
 		m_saveOctomapServer = m_nh.advertiseService(
-    	"exploration/save_octomap", &OctomapServer::saveOctomapServiceCb, this);	
+    		"exploration/save_octomap", &OctomapServer::saveOctomapServiceCb, this);	
 	}
 
 	OctomapServer::~OctomapServer()
@@ -99,10 +101,10 @@ namespace octomap_server
 		const nav_msgs::Odometry::ConstPtr& msg)
 	{
 		m_uavCurrentPose = msg->pose.pose;
-		// ROS_INFO("Position -> x: %.3f, y: %.3f, z: %.3f", 
-        //       m_uavCurrentPose.position.x, 
-        //       m_uavCurrentPose.position.y, 
-        //       m_uavCurrentPose.position.z);
+		ROS_INFO("Position -> x: %.3f, y: %.3f, z: %.3f", 
+              m_uavCurrentPose.position.x, 
+              m_uavCurrentPose.position.y, 
+              m_uavCurrentPose.position.z);
 	}
 
 	bool OctomapServer::saveOctomapServiceCb(
@@ -395,8 +397,9 @@ namespace octomap_server
 		// Each array stores all cubes of a different size, one for each depth level:
 		occupiedNodesVis.markers.resize(m_treeDepth + 1);
 
-		// Init	obstacle_voxel_array 	
+		// Init	obstacle_voxel_array and free_voxel_array	
 		geometry_msgs::PoseArray obstacle_voxel_array;
+		geometry_msgs::PoseArray free_voxel_array;
 		obstacle_voxel_array.header.frame_id = m_worldFrameId;
 		obstacle_voxel_array.header.stamp = ros::Time::now();
 
@@ -458,6 +461,17 @@ namespace octomap_server
 					double x = it.getX();
 					double y = it.getY();
 
+					// Select free voxel for uav
+					if (z > m_heightFloor)
+					{
+						// Add obstacle positionPoses;
+						geometry_msgs::Pose free_poses;
+						free_poses.position.x = x;
+						free_poses.position.y = y;
+						free_poses.position.z = z;					
+						free_voxel_array.poses.push_back(free_poses);
+					}
+
 					// Create marker for free space:
 					unsigned idx = it.getDepth();
 					assert(idx < freeNodesVis.markers.size());
@@ -473,6 +487,8 @@ namespace octomap_server
 		}
 
 		m_obsVoxelPub.publish(obstacle_voxel_array);
+		m_freeVoxelPub.publish(free_voxel_array);
+
 
 
 		// Finish MarkerArray:

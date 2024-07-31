@@ -13,7 +13,6 @@
       <remap from="cloud_in" to="$(arg cloud_in)"/>
       <remap from="odometry" to="$(arg odometry)"/>
       <remap from="namespace" to="$(arg namespace)"/>
-      <!-- <remap from="point_reached" to="$(arg point_reached)"/> -->
     </node>
    </group>
 

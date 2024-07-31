@@ -9,36 +9,40 @@ exploration:
   depth: 16
   # if the candidate point is inside the radius of the previous visited points,
   # the candidate is deleted from the candidate list
-  radius: 1 # 5.5
+  radius: 2 # 5.5
   # bounding box: necessary to limit the simulation 
   # scenario (smaller than actual gazebo scenario)
   # used for frontier detection
-  bbx_minX: -60 #-500.0
-  bbx_maxX: 60 #500.0
-  bbx_minY: -60 #-200.0
-  bbx_maxY: 60 #200.0
-  bbx_minZ: 0.5 #0.1 
-  bbx_maxZ: 5.0 #10
+  bbx_minX: -60 
+  bbx_maxX: 60 
+  bbx_minY: -60 
+  bbx_maxY: 60 
+  bbx_minZ: 1 #0.5
+  bbx_maxZ: 3 #5.0 
 
   # Length of one side of the cube inside which we calculate information gain
-  box_length: 30 #8.0
+  box_length: 8 #30
   # Gain to scale exp function in information gain
   k_gain: 10 # 100.0
   # Constant; small lambda means that motion is cheap and gives priority
-  lambda: 0.01 #0.1386 
+  lambda: 0.5 #0.1386 
+  #Gain to scale distance from UGV frontier
+  k_frontier: 1
+
+
 
   # Threshold for considering the goal achieved
-  thresold_goal: 0.2
+  thresold_goal: 0.5
 
 
   # Total volume of the environment for exploration in m^3
-  volume: 1000 #50000
+  volume: 1000 
 sensor_model:
   # Field of view in degrees
-  horizontalFOV: 69
-  verticalFOV: 50   # vedi formula quaderno per calcolarla
+  horizontalFOV: 60 #69
+  verticalFOV: 30 #50   # vedi formula quaderno per calcolarla
   # VelodyneVLP16 max range in meters
-  max_range: 5 
+  max_range: 4 
   pitch_angle: 0.0  
 
   probability_hit: 0.7
@@ -57,5 +61,5 @@ octomap:
 
 clustering:
   # A higher bandwidth will result in fewer but larger clusters
-  kernel_bandwidth: 0.005 #2
+  kernel_bandwidth: 0.01 #2
   IsUGV: False

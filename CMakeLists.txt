@@ -42,6 +42,7 @@ find_package(cmake_modules REQUIRED)
 add_message_files(
     FILES
     ClusterInfo.msg
+    FreeMeshInfo.msg
 )
 
 generate_messages(

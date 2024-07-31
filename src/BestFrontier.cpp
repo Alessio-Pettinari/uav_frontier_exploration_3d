@@ -34,12 +34,19 @@ namespace best_frontier
 		m_boxInfGainSize = config["exploration"]["box_length"].as<double>();
 		m_kGain = config["exploration"]["k_gain"].as<double>();
 		m_lambda = config["exploration"]["lambda"].as<double>();
-		
+		m_IsUGV = config["clustering"]["IsUGV"].as<bool>();
+		if (config["exploration"]["k_frontier"]){
+			m_kFrontier = config["exploration"]["k_frontier"].as<double>();
+		} else {
+			m_kFrontier = 1.0;
+		}
+
+			
 		return true;
 	}
 
 	point3d BestFrontier::bestFrontierInfGain(
-		octomap::OcTree* octree,  point3d currentPosition, KeySet& Cells)
+		octomap::OcTree* octree,  point3d currentPosition, KeySet& Cells, point3d ugvFrontier)
 	{
 		// m_logfile << "bestFrontierInfGain" << endl;
 		ros::WallTime startTime_frontier = ros::WallTime::now();
@@ -78,14 +85,34 @@ namespace best_frontier
 		{
 			// Get candidate
 			auto currCandidate = candidates[i];
+			ros::WallTime startTime = ros::WallTime::now();
 			double unknownVolume = calcMIBox(octree, currCandidate.first);
+			double total_time_1 = (ros::WallTime::now() - startTime).toSec();
+
+			ros::WallTime startTime1 = ros::WallTime::now();
 			double tempDistance = calculateDistance(currentPosition, currCandidate.first);
+			double total_time_2 = (ros::WallTime::now() - startTime1).toSec();
+
+			
+			double distFrontier = 0.0;
+			if (!m_IsUGV) {            	
+				double distFrontier = calculateDistance(currCandidate.first, ugvFrontier);
+			}
+
+    	
 			double kGain = m_kGain;
 
-			InfGainVector[i] = (kGain * unknownVolume * exp(- m_lambda * tempDistance))+4*tempDistance; 
+			ros::WallTime startTime2 = ros::WallTime::now();
+			// InfGainVector[i] = (kGain * unknownVolume * exp(- m_lambda * tempDistance))*(m_kFrontier/(1+distFrontier)); 
+			InfGainVector[i] = (kGain * unknownVolume) + (m_lambda * tempDistance)+ (m_kFrontier/(1+distFrontier)); 
+			double total_time_3 = (ros::WallTime::now() - startTime2).toSec();
 
+			ROS_INFO_STREAM("distFront:" << i<< "-" << distFrontier);
 			ROS_INFO_STREAM("Candidate " << i << " - InfGain: " << InfGainVector[i]);
 			ROS_INFO_STREAM("Distance " << i << " -d:" << tempDistance);
+			// ROS_INFO_STREAM("time1:" << total_time_1);
+			ROS_INFO_STREAM("time2:" << total_time_2);
+			ROS_INFO_STREAM("time3:" << total_time_3);
 		}
 
 		// Find max element index

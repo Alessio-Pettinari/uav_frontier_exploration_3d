@@ -11,7 +11,7 @@ namespace best_frontier
       BestFrontier();
       bool configureFromFile(string config_filename);
       point3d bestFrontierInfGain(
-        octomap::OcTree* octree, point3d currentPosition, KeySet& Cells);
+        octomap::OcTree* octree, point3d currentPosition, KeySet& Cells, point3d ugvFrontier = point3d());
   
     protected:
       double calculateDistance(const point3d p1, const point3d p2)
@@ -25,8 +25,9 @@ namespace best_frontier
       double calcMIBox(const octomap::OcTree *octree, const point3d &sensorOrigin); 
       
       string m_configFilename;
-      double m_resolution, m_kGain, m_lambda, m_boxInfGainSize;
+      double m_resolution, m_kGain, m_lambda, m_boxInfGainSize, m_kFrontier;
       ofstream m_logfile; 
+      bool m_IsUGV;
     };
 }
 #endif

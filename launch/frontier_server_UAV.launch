@@ -10,6 +10,8 @@
 
   <!-- Clustering Parameters -->
   <arg name="obstacle_voxel" default="obstacle_voxel"/>
+  <arg name="free_voxel" default="free_voxel" />
+  <arg name="uav_frontier" default="frontier_cells_vis_array"/>
   
 
 
@@ -21,15 +23,17 @@
       <remap from="cloud_in" to="$(arg cloud_in)"/>
       <remap from="odometry" to="$(arg odometry)"/>
       <remap from="namespace" to="$(arg namespace)"/>
-      <!-- <remap from="point_reached" to="$(arg point_reached)"/> -->
     </node>
 
      <!-- Launch UAV clustering -->
     <node pkg="uav_frontier_exploration_3d" type="ClusteringVoxel.py" name="ClusteringVoxel" output="screen">
       <param name="quantile" value="0.05" /> 
+      <param name="radius_threshold" value="0.5" /> 
       <param name="frame" value="odom" />
       <param name="marker_ns" value="uav_cluster" />
       <remap from="obstacle_voxel" to="$(arg obstacle_voxel)"/>
+      <remap from="free_voxel" to="$(arg free_voxel)" />
+      <remap from="uav_frontier" to="$(arg uav_frontier)"/>
     </node>
    </group>
 

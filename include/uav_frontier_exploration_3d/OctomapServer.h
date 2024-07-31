@@ -93,7 +93,7 @@ namespace octomap_server
         std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
 
       ros::NodeHandle m_nh;
-      ros::Publisher  m_markerOccPub, m_markerFreePub, m_binaryMapPub, m_pubVolumes, m_obsVoxelPub;
+      ros::Publisher  m_markerOccPub, m_markerFreePub, m_binaryMapPub, m_pubVolumes, m_obsVoxelPub, m_freeVoxelPub;
       ros::Subscriber m_pointCloudSub, m_uavGlobalPoseSub;
       ros::ServiceServer m_saveOctomapServer;
       tf::TransformListener m_tfListener;

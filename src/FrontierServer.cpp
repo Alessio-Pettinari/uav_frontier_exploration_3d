@@ -25,11 +25,11 @@ namespace frontier_server
 		m_bestFrontierPub = m_nh.advertise<
 			visualization_msgs::Marker>("best_frontier_marker", 1, false);
 		m_markerFrontierPub = m_nh.advertise<
-			visualization_msgs::MarkerArray>("frontier_cells_vis_array", 1, false);
+			visualization_msgs::MarkerArray>("frontier_cells_vis_array", 1, true); //latch=true
 		m_markerClusteredFrontierPub = m_nh.advertise<
-			visualization_msgs::MarkerArray>("clustered_frontier_cells_vis_array", 1, false);
+			visualization_msgs::MarkerArray>("clustered_frontier_cells_vis_array", 1, true);
 		m_uavGoalPub = m_nh.advertise<
-			geometry_msgs::PoseStamped>("exploration/goal", 1, false);
+			geometry_msgs::PoseStamped>("exploration/goal", 1, true);
 		m_pubEsmState = m_nh.advertise<std_msgs::Int32>("exploration/state", 1);
 
 		// Initialize subscribers
@@ -38,9 +38,13 @@ namespace frontier_server
 		m_currentReferenceSub = m_nh.subscribe("odometry", 1, 
 			&FrontierServer::currentReferenceCallback, this);
 
+		m_ugvGoalSub = m_nh.subscribe("/first/exploration/goal", 1, &FrontierServer::ugvGoalCallback, this);
+
 		// Initialize position hold service if exploration is off
 		m_serviceExploration = m_nh.advertiseService("exploration/toggle",
 			&FrontierServer::toggleExplorationServiceCb, this);
+
+		
 	}
 
 	FrontierServer::~FrontierServer()
@@ -78,6 +82,7 @@ namespace frontier_server
 
 		m_kernelBandwidth = config["clustering"]["kernel_bandwidth"].as<double>();
 		m_IsUGV = config["clustering"]["IsUGV"].as<bool>();
+
 
 		// m_ns = config["robot"]["model"].as<string>();
 
@@ -207,7 +212,6 @@ namespace frontier_server
 			frontierSize++;
 		}
 		m_logfile << "Number of global frontiers after:" << frontierSize << endl;
-		// ROS_INFO("Number of global frontiers after: %d", frontierSize);
 		double total_time = (ros::WallTime::now() - startTime).toSec();
 		m_logfile << "updateGlobalFrontier - used total: "<< total_time << " sec" <<endl;
 	}
@@ -245,7 +249,7 @@ namespace frontier_server
       }
     }
 
-		cout << "FrontierServer - parents number: " << counter << endl;
+		// cout << "FrontierServer - parents number: " << counter << endl;
 		m_logfile << "number of parents: " << counter << endl;
 		double total_time = (ros::WallTime::now() - startTime).toSec();
 		m_logfile << "SearchForParents - used total: "<< total_time << " sec" <<endl;
@@ -309,6 +313,11 @@ namespace frontier_server
 		pose_stamped.pose = msg->pose.pose;
 		m_uavCurrentReference = pose_stamped;
 	} 
+
+	void FrontierServer::ugvGoalCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
+	{
+		m_ugvGoal = msg->pose;
+	}
 
 
 	void FrontierServer::checkClusteredCells()
@@ -393,7 +402,7 @@ namespace frontier_server
 			} 
 			clusterCellsKey.push_back(tempCellKey);
 
-			ROS_INFO("Clustered point %d: x=%f, y=%f, z=%f", i, points[i].x, points[i].y, points[i].z);
+			// ROS_INFO("Clustered point %d: x=%f, y=%f, z=%f", i, points[i].x, points[i].y, points[i].z);
 		}
 	}
 
@@ -471,19 +480,21 @@ namespace frontier_server
 							ROS_INFO("no parents found");
 						}	
 	
-					// If the previous goal is reached
+					// If the previous goal is reachedF
 					else if (m_bestFrontierPoint.x() == 0.0 && m_bestFrontierPoint.y() == 0.0 && m_bestFrontierPoint.z() == 0.0 && flag_init){
 							if (start_view) {
-								setStateAndPublish(ExplorationState::CHECKFORFRONTIERS);
+								setStateAndPublish(ExplorationState::CHECKFORFRONTIERS);						
 								start_view = false;}
 							else {
-								setStateAndPublish(ExplorationState::POINTREACHED);
+								setStateAndPublish(ExplorationState::POINTREACHED);		
 								flag_init = false;}
 							}	
 						else {
 						double dist_goal = sqrt(pow(m_uavCurrentPose.position.x - m_bestFrontierPoint.x(), 2) +
 							pow(m_uavCurrentPose.position.y - m_bestFrontierPoint.y(), 2) +
 							pow(m_uavCurrentPose.position.z - m_bestFrontierPoint.z(), 2));
+						ROS_INFO("Position -> x: %.3f, y: %.3f, z: %.3f", m_uavCurrentPose.position.x, m_uavCurrentPose.position.y, m_uavCurrentPose.position.z);
+						ROS_INFO("Best -> x: %.3f, y: %.3f, z: %.3f", m_bestFrontierPoint.x(), m_bestFrontierPoint.y(), m_bestFrontierPoint.z());
 						if (dist_goal < m_thresold_goal) {
 							m_currentGoalReached = true;
 							ROS_WARN_STREAM_THROTTLE(3.0, "Goal reached!");
@@ -506,9 +517,17 @@ namespace frontier_server
 					point3d currentPoint3d(m_uavCurrentPose.position.x, 
 						m_uavCurrentPose.position.y, m_uavCurrentPose.position.z);
 
+					octomap::point3d ugvGoalPoint(m_ugvGoal.position.x, 
+        				m_ugvGoal.position.y, m_ugvGoal.position.z);
+					
 					// Simulation bag
-					m_bestFrontierPoint = 
-							m_bestFrontierServer.bestFrontierInfGain(m_octree, currentPoint3d, m_clusteredCellsUpdated);
+					if (m_IsUGV)
+						m_bestFrontierPoint = 
+								m_bestFrontierServer.bestFrontierInfGain(m_octree, currentPoint3d, m_clusteredCellsUpdated);
+					else {
+						m_bestFrontierPoint = 
+								m_bestFrontierServer.bestFrontierInfGain(m_octree, currentPoint3d, m_clusteredCellsUpdated, ugvGoalPoint);
+					}			
 					// m_bestFrontierPoint = 
 					// 	m_bestFrontierServer.closestFrontier(m_octree, currentPoint3d, m_clusteredCellsUpdated);
 					m_logfile << "Best frontier: " << m_bestFrontierPoint << endl;
@@ -521,7 +540,6 @@ namespace frontier_server
 					cout << "Best frontier: " << m_bestFrontierPoint << endl;
 					publishBestFrontier();
 					publishUAVGoal(m_bestFrontierPoint);
-					ros::Duration(0.05).sleep();
 					setStateAndPublish(ExplorationState::CHECKFORFRONTIERS);
 					// }
 					break;
@@ -537,9 +555,10 @@ namespace frontier_server
 		m_logfile << "publishFrontier" << endl;
 		// init markers for free space:
 		visualization_msgs::MarkerArray frontierNodesVis;
+		geometry_msgs::PoseArray free_voxel_array;
+		
 		// each array stores all cubes of a different size, one for each depth level:
 		frontierNodesVis.markers.resize(m_explorationDepth + 1);
-
 		
 		int counter {0};
 		int numFrontierNodes {0};
@@ -575,13 +594,13 @@ namespace frontier_server
 				cubeCenter.y = y;
 				cubeCenter.z = z;
 
-				frontierNodesVis.markers[idx].points.push_back(cubeCenter);
+				frontierNodesVis.markers[idx].points.push_back(cubeCenter);	
 				numFrontierNodes++;
 			} 
 		}
 
+		
 		// ROS_INFO("Number of frontier nodes: %d", numFrontierNodes);
-
 		// finish MarkerArray:
 		std_msgs::ColorRGBA colorFrontier;
 		colorFrontier.r = 1.0;
@@ -590,7 +609,7 @@ namespace frontier_server
 		colorFrontier.a = 1.0;
 		for (unsigned i= 0; i < frontierNodesVis.markers.size(); ++i)
 		{
-			double size = m_octree->getNodeSize(i)*2;
+			double size = m_octree->getNodeSize(i);
 
 			frontierNodesVis.markers[i].header.frame_id = m_worldFrameId;
 			frontierNodesVis.markers[i].header.stamp = ros::Time::now();
@@ -701,10 +720,17 @@ namespace frontier_server
 		m_logfile << "publishBestFrontier" << endl;
 		visualization_msgs::Marker frontier_goal;
 		std_msgs::ColorRGBA colorgoalFrontier;
-		colorgoalFrontier.r = 1.0;
-		colorgoalFrontier.g = 0.5;
-		colorgoalFrontier.b = 1.0;
-		colorgoalFrontier.a = 0.8;
+		if (m_IsUGV){
+			colorgoalFrontier.r = 1.0;
+			colorgoalFrontier.g = 0.5;
+			colorgoalFrontier.b = 1.0;
+			colorgoalFrontier.a = 1;
+		} else {
+			colorgoalFrontier.r = 171;
+			colorgoalFrontier.g = 205;
+			colorgoalFrontier.b = 239;
+			colorgoalFrontier.a = 1;
+		}
 		geometry_msgs::Point cubeCenter;
 		cubeCenter.x = m_bestFrontierPoint.x();
 		cubeCenter.y = m_bestFrontierPoint.y();
@@ -722,19 +748,12 @@ namespace frontier_server
 		frontier_goal.header.frame_id = m_worldFrameId;
 		frontier_goal.header.stamp = ros::Time::now();
 		frontier_goal.ns = "namespace";
-		frontier_goal.type = visualization_msgs::Marker::CUBE_LIST;
-		frontier_goal.scale.x = size;
-		frontier_goal.scale.y = size;
-		frontier_goal.scale.z = size;
+		frontier_goal.type = visualization_msgs::Marker::SPHERE_LIST;
+		frontier_goal.scale.x = size*2;
+		frontier_goal.scale.y = size*2;
+		frontier_goal.scale.z = size*2;
 		frontier_goal.color = colorgoalFrontier;
 		// frontier_goal.pose.orientation.w = 1.0;
-
-		// // orientation
-		// geometry_msgs::Quaternion orientation;
-		// tf::Quaternion tf_quat;
-		// double yaw_angle = 0.0;
-		// tf_quat.setRPY(0.0, 0.0, yaw_angle); // Roll, Pitch, Yaw
-		// tf::quaternionTFToMsg(tf_quat, orientation);
 
 		if (frontier_goal.points.size() > 0)
 			frontier_goal.action = visualization_msgs::Marker::ADD;

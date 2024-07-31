@@ -52,6 +52,7 @@ namespace frontier_server
       // void currentReferenceCallback(geometry_msgs::PoseStamped msg);
       void currentReferenceCallback(const nav_msgs::Odometry::ConstPtr& msg);
       // void currentReferenceCallback(geometry_msgs::PoseWithCovarianceStamped msg);
+      void ugvGoalCallback(const geometry_msgs::PoseStamped::ConstPtr& msg);
 
 
       void checkClusteredCells();
@@ -82,8 +83,8 @@ namespace frontier_server
       ros::NodeHandle m_nh;
       ros::Publisher m_markerFrontierPub, m_markerClusteredFrontierPub,
         m_bestFrontierPub, m_markerCandidatesPub,m_frontierMapPub, m_uavGoalPub,
-        m_pubEsmState;
-      ros::Subscriber m_pointReachedSub, m_currentReferenceSub;
+        m_pubEsmState, m_freeVoxelPub;
+      ros::Subscriber m_pointReachedSub, m_currentReferenceSub, m_ugvGoalSub;
 
       octomap::OcTree* m_octree {NULL};
       octomap_server::OctomapServer m_octomapServer;
@@ -93,7 +94,7 @@ namespace frontier_server
       unsigned m_treeDepth, m_explorationDepth;
       double m_rate {1}, m_resolution, m_explorationRadius, m_explorationMinX,
         m_explorationMaxX, m_explorationMinY, m_explorationMaxY,m_explorationMinZ,
-        m_explorationMaxZ, m_kernelBandwidth, m_thresold_goal;
+        m_explorationMaxZ, m_kernelBandwidth, m_thresold_goal, m_heightFloor;
 
       bool m_currentGoalReached {true};
       bool m_explorationToggled {false};
@@ -115,6 +116,7 @@ namespace frontier_server
 
       geometry_msgs::Pose m_uavCurrentPose;
       geometry_msgs::PoseStamped m_uavCurrentReference;
+      geometry_msgs::Pose m_ugvGoal;
       ros::ServiceServer m_serviceExploration;  
       ExplorationState m_currentState = ExplorationState::OFF;
     };
