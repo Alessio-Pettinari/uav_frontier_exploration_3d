@@ -164,7 +164,7 @@ namespace frontier_server
 			frontierSize++;
 		}
 		m_logfile << "Number of global frontiers before:" << frontierSize << endl;
-		// ROS_INFO("Number of global frontiers before: %d", frontierSize);
+		ROS_INFO("Number of global frontiers before: %d", frontierSize);
 		bool unknownCellFlag {false};
 		bool freeCellFlag {false};
 		bool occupiedCellFlag {false};
@@ -195,15 +195,17 @@ namespace frontier_server
 			}
 			if(!unknownCellFlag || occupiedCellFlag)
 			{
-				// globalFrontierCells.erase(*cell_iter);
+				cell_iter = globalFrontierCells.erase(cell_iter);
 				deleted++;	
 			}
-			else m_globalFrontierCellsUpdated.insert(*cell_iter);
-			
-			cell_iter++;				
+			else 
+			{
+				m_globalFrontierCellsUpdated.insert(*cell_iter);
+				++cell_iter;		
+			}		
 		}
 		m_logfile << "Number of deleted frontiers:" << deleted << endl;
-		// ROS_INFO("Number of deleted frontiers: %d", deleted);
+		ROS_INFO("Number of deleted frontiers: %d", deleted);
 		// Calculate number of frontiers
 		frontierSize = 0;
 		for(KeySet::iterator iter = m_globalFrontierCellsUpdated.begin(), end = m_globalFrontierCellsUpdated.end();
@@ -212,6 +214,7 @@ namespace frontier_server
 			frontierSize++;
 		}
 		m_logfile << "Number of global frontiers after:" << frontierSize << endl;
+		ROS_INFO("Number of global frontiers afters: %d", frontierSize);
 		double total_time = (ros::WallTime::now() - startTime).toSec();
 		m_logfile << "updateGlobalFrontier - used total: "<< total_time << " sec" <<endl;
 	}

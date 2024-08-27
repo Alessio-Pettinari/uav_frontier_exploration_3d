@@ -6,7 +6,7 @@ from geometry_msgs.msg import PoseArray, Point
 from visualization_msgs.msg import Marker, MarkerArray
 from sklearn.cluster import MeanShift, estimate_bandwidth, KMeans, DBSCAN
 from uav_frontier_exploration_3d.msg import ClusterInfo, FreeMeshInfo
-from scipy.spatial import ConvexHull, Delaunay
+from scipy.spatial import ConvexHull, Delaunay, KDTree
 from scipy.spatial.distance import cdist
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
@@ -15,6 +15,102 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 freeSpace_reached = False
 frontier_reached = False
 num_prev_markers = 0
+
+# octomap_res = 0.1*2
+
+# def find_nearest_within_threshold(point, kdtree, points, octomap_res):
+#     distances, indices = kdtree.query(point, k=2)  # k=2 include il punto stesso e il più vicino
+#     if distances[1] <= octomap_res:
+#         return points[indices[1]]
+#     else:
+#         return None
+
+# def create_parallelepiped_marker(id, min_point, max_point):
+#     marker = Marker()
+#     marker.header.frame_id = frame  # Modifica se necessario
+#     marker.header.stamp = rospy.Time.now()
+#     marker.ns = marker_ns
+#     marker.id = id
+#     marker.type = Marker.CUBE
+#     marker.action = Marker.ADD
+
+#     # Calcolo del centro del parallelepipedo
+#     center = [(min_point[0] + max_point[0]) / 2.0,
+#               (min_point[1] + max_point[1]) / 2.0,
+#               (min_point[2] + max_point[2]) / 2.0]
+    
+#     marker.pose.position.x = center[0]
+#     marker.pose.position.y = center[1]
+#     marker.pose.position.z = center[2]
+
+#     # Dimensioni del parallelepipedo
+#     marker.scale.x = max_point[0] - min_point[0]
+#     marker.scale.y = max_point[1] - min_point[1]
+#     marker.scale.z = max_point[2] - min_point[2]
+
+#     # Colore del parallelepipedo
+#     marker.color.r = 0.0
+#     marker.color.g = 1.0
+#     marker.color.b = 0.0
+#     marker.color.a = 0.5  # Trasparenza
+
+#     return marker
+
+# def publish_markers(parallelepipeds):
+#     marker_array = MarkerArray()
+#     for i, (min_point, max_point) in enumerate(parallelepipeds):
+#         marker = create_parallelepiped_marker(i, min_point, max_point)
+#         marker_array.markers.append(marker)
+
+#     cluster_pub.publish(marker_array)
+
+# def callback(pose_array):
+#     points = []
+#     for pose in pose_array.poses:
+#         points.append([pose.position.x, pose.position.y, pose.position.z]) 
+
+#     points = np.array(points)
+
+#     if len(points) == 0:
+#         rospy.loginfo("Cluster points array empty!")
+#         return
+
+#     kdtree = KDTree(points)
+#     parallelepipeds = []
+#     visited_points = set()
+
+#     # Clusterizzazione e costruzione dei parallelepipedi
+#     for point in points:
+#         if tuple(point) in visited_points:
+#             continue
+        
+#         cluster_points = []
+#         to_visit = [point]
+        
+#         while to_visit:
+#             current_point = to_visit.pop()
+#             if tuple(current_point) in visited_points:
+#                 continue
+            
+#             visited_points.add(tuple(current_point))
+#             cluster_points.append(current_point)
+            
+#             nearest = find_nearest_within_threshold(current_point, kdtree, points, octomap_res)
+#             if nearest is not None and tuple(nearest) not in visited_points:
+#                 to_visit.append(nearest)
+        
+#         # Se il cluster è stato creato, costruisci il parallelepipedo
+#         if cluster_points:
+#             cluster_points = np.array(cluster_points)
+#             min_x, min_y, min_z = np.min(cluster_points, axis=0)
+#             max_x, max_y, max_z = np.max(cluster_points, axis=0)
+            
+#             parallelepipeds.append(((min_x, min_y, min_z), (max_x, max_y, max_z)))
+
+#     # Pubblica i marker
+#     publish_markers(parallelepipeds)
+
+##############################################################
 
 ## Callback Clustering Obstacle:
 def callback(pose_array):
@@ -31,9 +127,7 @@ def callback(pose_array):
     if len(points) == 0:
         rospy.loginfo("Cluster points array empty!")
         
-    
-
-    ## Clustering MEAN-SHIFT
+    # Clustering MEAN-SHIFT
     bandwidth = estimate_bandwidth(points, quantile = quantile)
     if bandwidth <=0:
         bandwidth = 0.1  # Set a default value 
@@ -199,7 +293,7 @@ def callback(pose_array):
     
     cluster_pub.publish(marker_array)
     cluster_info_pub.publish(cluster_info_msg)
-
+#####################################################################################
 
 ## Callback UAV Frontier:
 def frontierCallback(pos):
