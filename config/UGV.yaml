@@ -13,10 +13,10 @@ exploration:
   # bounding box: necessary to limit the simulation 
   # scenario (smaller than actual gazebo scenario)
   # used for frontier detection
-  bbx_minX: -60 
-  bbx_maxX: 60 
-  bbx_minY: -60 
-  bbx_maxY: 60 
+  bbx_minX: -1 #-60 
+  bbx_maxX: 8 #60 
+  bbx_minY: -6 #-60 
+  bbx_maxY: 13 #60 
   bbx_minZ: 0.0 #0.1 
   bbx_maxZ: 5.0 #10
 
