@@ -13,19 +13,21 @@ exploration:
   # bounding box: necessary to limit the simulation 
   # scenario (smaller than actual gazebo scenario)
   # used for frontier detection
-  bbx_minX: -1 #-60 
-  bbx_maxX: 8 #60 
-  bbx_minY: -6 #-60 
-  bbx_maxY: 13 #60 
+  bbx_minX: 0.2 #-1  
+  bbx_maxX: 9.8 #8 
+  bbx_minY: 0.2 #-6 
+  bbx_maxY: 19.8 #13  
   bbx_minZ: 0.0 #0.1 
-  bbx_maxZ: 5.0 #10
+  bbx_maxZ: 2.0 #10
 
   # Length of one side of the cube inside which we calculate information gain
-  box_length: 8 
+  box_length: 4 #8 
   # Gain to scale exp function in information gain
-  k_gain: 100.0
+  k_gain: 1 #100.0
   # Constant; small lambda means that motion is cheap and gives priority
-  lambda: 0.1386 
+  lambda: 0.5 #1 
+  #Gain to scale distance from UGV frontier
+  k_frontier: 1 
 
   # Threshold for considering the goal achieved
   thresold_goal: 1
@@ -38,7 +40,7 @@ sensor_model:
   horizontalFOV: 60
   verticalFOV: 46   # vedi formula quaderno per calcolarla
   # VelodyneVLP16 max range in meters
-  max_range: 5 #da ridurre
+  max_range: 4.5 #5 
   pitch_angle: 0.0  # 0 perchè la camerà è montata orizzontalmente: si vede in rosbot.xacro poichè la rotazione
                     #  (rpy) tra parent (body_link) e child (camera_lin) è nulla
 

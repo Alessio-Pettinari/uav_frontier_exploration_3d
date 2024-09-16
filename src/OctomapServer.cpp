@@ -84,6 +84,8 @@ namespace octomap_server
 		m_filePath = config["octomap"]["file_path"].as<string>();
 		m_heightFloor = config["octomap"]["height_voxel_floor"].as<double>();
 
+		m_IsUGV = config["clustering"]["IsUGV"].as<bool>();
+
 		// m_ns = config["robot"]["model"].as<string>();
 
 		return true;
@@ -493,10 +495,18 @@ namespace octomap_server
 
 		// Finish MarkerArray:
 		std_msgs::ColorRGBA colorOcc, colorFree;
-		colorOcc.r = 0.0;
-		colorOcc.g = 0.0;
-		colorOcc.b = 1.0;
-		colorOcc.a = 1.0;
+
+		if(m_IsUGV){
+			colorOcc.r = 0.0;
+			colorOcc.g = 1.0;
+			colorOcc.b = 1.0;
+			colorOcc.a = 1.0;
+		} else {
+			colorOcc.r = 0.0;
+			colorOcc.g = 0.0;
+			colorOcc.b = 1.0;
+			colorOcc.a = 1.0;
+		}
 
 		colorFree.r = 0.0;
 		colorFree.g = 1.0;

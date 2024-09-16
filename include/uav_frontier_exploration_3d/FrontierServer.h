@@ -8,6 +8,7 @@
 // #include <dlib/clustering.h>
 #include <std_srvs/SetBool.h>
 #include <std_msgs/Int32.h>
+#include <std_msgs/Bool.h>
 
 namespace frontier_server
 {
@@ -83,7 +84,7 @@ namespace frontier_server
       ros::NodeHandle m_nh;
       ros::Publisher m_markerFrontierPub, m_markerClusteredFrontierPub,
         m_bestFrontierPub, m_markerCandidatesPub,m_frontierMapPub, m_uavGoalPub,
-        m_pubEsmState, m_freeVoxelPub;
+        m_pubEsmState, m_freeVoxelPub, m_GoalReachedPub, m_UpdateGoalOCP;
       ros::Subscriber m_pointReachedSub, m_currentReferenceSub, m_ugvGoalSub;
 
       octomap::OcTree* m_octree {NULL};
@@ -99,6 +100,7 @@ namespace frontier_server
       bool m_currentGoalReached {true};
       bool m_explorationToggled {false};
       bool m_IsUGV {false};
+      bool flag_updateGoal {false};
 
       string m_configFilename;
       

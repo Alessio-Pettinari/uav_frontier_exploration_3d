@@ -121,6 +121,8 @@ namespace octomap_server
       bool m_filterSpeckles {false},
         m_compressMap {true},
         m_pointCloudReceivedFlag {false};
+      
+      bool m_IsUGV {false};
 
       string m_configFilename;
       ofstream m_logfile;

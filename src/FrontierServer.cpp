@@ -8,7 +8,8 @@
 #include <uav_frontier_exploration_3d/FrontierServer.h>
 
 namespace frontier_server
-{
+{	
+
 	FrontierServer::FrontierServer()
 	{
 		ros::NodeHandle private_nh {ros::NodeHandle("~")};
@@ -32,6 +33,10 @@ namespace frontier_server
 			geometry_msgs::PoseStamped>("exploration/goal", 1, true);
 		m_pubEsmState = m_nh.advertise<std_msgs::Int32>("exploration/state", 1);
 
+		m_GoalReachedPub = m_nh.advertise<std_msgs::Bool>("GoalReached",10, true);
+
+		m_UpdateGoalOCP = m_nh.advertise<std_msgs::Bool>("UpdateGoal",10, true);
+
 		// Initialize subscribers
 		// m_pointReachedSub = m_nh.subscribe("point_reached", 1, 
 		// 	&FrontierServer::pointReachedCallback, this);
@@ -40,11 +45,13 @@ namespace frontier_server
 
 		m_ugvGoalSub = m_nh.subscribe("/first/exploration/goal", 1, &FrontierServer::ugvGoalCallback, this);
 
+		// m_UAV_goal_reached = m_nh.subscribe("/drone/GoalReached", 1, &FrontierServer::uavGoalReachCallback, this);
+
+
 		// Initialize position hold service if exploration is off
 		m_serviceExploration = m_nh.advertiseService("exploration/toggle",
 			&FrontierServer::toggleExplorationServiceCb, this);
 
-		
 	}
 
 	FrontierServer::~FrontierServer()
@@ -285,7 +292,7 @@ namespace frontier_server
 		}
 		delete cluster;
 		m_logfile << "cluster_size: " << m_clusteredCells.size() << endl;
-		ROS_INFO("cluster_size: %d", m_clusteredCells.size());
+		ROS_INFO("cluster_size: %ld", m_clusteredCells.size());
 		// cout << "cluster_size: " << m_clusteredCells.size() << endl;
 		double total_time_evaluation = (ros::WallTime::now() - startTime_evaluation).toSec();
 		m_logfile << "clusterFrontier used total: " << total_time_evaluation << " sec" << endl;
@@ -320,7 +327,15 @@ namespace frontier_server
 	void FrontierServer::ugvGoalCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 	{
 		m_ugvGoal = msg->pose;
+		ROS_INFO("CALBACK -> x: %.3f, y: %.3f, z: %.3f", m_ugvGoal.position.x, m_ugvGoal.position.y, m_ugvGoal.position.z);
+
 	}
+
+	// void FrontierServer::uavGoalReachCallback(const std_msgs::Bool::ConstPtr& msg)
+	// {
+	// 	UAV_Goal_Reached = msg->data;
+	// }
+
 
 
 	void FrontierServer::checkClusteredCells()
@@ -440,6 +455,8 @@ namespace frontier_server
 		ros::Rate loopRate(m_rate);
 		setStateAndPublish(ExplorationState::OFF);
 
+		octomap::point3d ugvGoalPoint_prec(0,0,0);
+
 		while (ros::ok())
 		{
 			ros::WallTime startTime = ros::WallTime::now();
@@ -483,7 +500,7 @@ namespace frontier_server
 							ROS_INFO("no parents found");
 						}	
 	
-					// If the previous goal is reachedF
+					// If the previous goal is reached
 					else if (m_bestFrontierPoint.x() == 0.0 && m_bestFrontierPoint.y() == 0.0 && m_bestFrontierPoint.z() == 0.0 && flag_init){
 							if (start_view) {
 								setStateAndPublish(ExplorationState::CHECKFORFRONTIERS);						
@@ -496,11 +513,26 @@ namespace frontier_server
 						double dist_goal = sqrt(pow(m_uavCurrentPose.position.x - m_bestFrontierPoint.x(), 2) +
 							pow(m_uavCurrentPose.position.y - m_bestFrontierPoint.y(), 2) +
 							pow(m_uavCurrentPose.position.z - m_bestFrontierPoint.z(), 2));
-						ROS_INFO("Position -> x: %.3f, y: %.3f, z: %.3f", m_uavCurrentPose.position.x, m_uavCurrentPose.position.y, m_uavCurrentPose.position.z);
-						ROS_INFO("Best -> x: %.3f, y: %.3f, z: %.3f", m_bestFrontierPoint.x(), m_bestFrontierPoint.y(), m_bestFrontierPoint.z());
+						//ROS_INFO("Position -> x: %.3f, y: %.3f, z: %.3f", m_uavCurrentPose.position.x, m_uavCurrentPose.position.y, m_uavCurrentPose.position.z);
+						//ROS_INFO("Best -> x: %.3f, y: %.3f, z: %.3f", m_bestFrontierPoint.x(), m_bestFrontierPoint.y(), m_bestFrontierPoint.z());
 						if (dist_goal < m_thresold_goal) {
 							m_currentGoalReached = true;
+							// if (m_IsUGV){
+							// 	std_msgs::Bool goal_reached_msg;
+							// 	goal_reached_msg.data = m_currentGoalReached;
+							// 	m_GoalReachedPub.publish(goal_reached_msg);
+							// }
+							
+							std_msgs::Bool goal_reached_msg;
+							goal_reached_msg.data = m_currentGoalReached;
+							m_GoalReachedPub.publish(goal_reached_msg);
+							
+							
 							ROS_WARN_STREAM_THROTTLE(3.0, "Goal reached!");
+							flag_updateGoal = false;
+							std_msgs::Bool flag_updateGoal_msg;
+							flag_updateGoal_msg.data = flag_updateGoal;
+							m_UpdateGoalOCP.publish(flag_updateGoal_msg);
 							setStateAndPublish(ExplorationState::POINTREACHED);
 						} 
 						else {
@@ -512,45 +544,110 @@ namespace frontier_server
 
 				case ExplorationState::POINTREACHED:
 					// Find Best Frontier
-					m_currentGoalReached = false;
+					//m_currentGoalReached = false;
+
 					// Delete candidates that are too close to prevoius assigned points
 					clusterFrontierAndPublish();
 					// ROS_INFO("ho pubblicato il clustered frontiere");
+					// if (m_IsUGV){
+					// 	std_msgs::Bool goal_reached_msg;
+					// 	goal_reached_msg.data = m_currentGoalReached;
+					// 	m_GoalReachedPub.publish(goal_reached_msg);	
+					// }
 					
-					point3d currentPoint3d(m_uavCurrentPose.position.x, 
-						m_uavCurrentPose.position.y, m_uavCurrentPose.position.z);
-
-					octomap::point3d ugvGoalPoint(m_ugvGoal.position.x, 
-        				m_ugvGoal.position.y, m_ugvGoal.position.z);
-					
+					// ciclo che aspetta che ugvGoalPoint != ugvUsedGoad
 					// Simulation bag
-					if (m_IsUGV)
+					if (m_IsUGV) {
+						point3d currentPoint3d(m_uavCurrentPose.position.x, 
+							m_uavCurrentPose.position.y, m_uavCurrentPose.position.z);
+
 						m_bestFrontierPoint = 
 								m_bestFrontierServer.bestFrontierInfGain(m_octree, currentPoint3d, m_clusteredCellsUpdated);
+					
+						m_bestFrontierPoint.z() = 0.0;
+						m_allUAVGoals.push_back(m_bestFrontierPoint);
+						cout << "Best frontier: " << m_bestFrontierPoint << endl;
+						publishBestFrontier();
+						publishUAVGoal(m_bestFrontierPoint);
+						m_currentGoalReached = false;
+						// ros::Rate rate(50);
+						// while (!UAV_goal_reached) {
+						// 	ros::spinOnce();
+						// 	rate.sleep();
+						// } else {
+							std_msgs::Bool goal_reached_msg;
+							goal_reached_msg.data = m_currentGoalReached;
+							m_GoalReachedPub.publish(goal_reached_msg);
+						// }
+						setStateAndPublish(ExplorationState::CHECKFORFRONTIERS);
+						// }
+						break;
+					
+					}
 					else {
-						m_bestFrontierPoint = 
-								m_bestFrontierServer.bestFrontierInfGain(m_octree, currentPoint3d, m_clusteredCellsUpdated, ugvGoalPoint);
+						ros::Rate rate(50);
+						while (ros::ok()){
+							point3d currentPoint3d(m_uavCurrentPose.position.x, 
+								m_uavCurrentPose.position.y, m_uavCurrentPose.position.z);
+
+							octomap::point3d ugvGoalPoint(m_ugvGoal.position.x-1.5, 
+								m_ugvGoal.position.y-8.5, m_ugvGoal.position.z);
+							//ROS_INFO("PositionUAV: -> x: %.3f, y: %.3f, z: %.3f", currentPoint3d.x(), currentPoint3d.y(), currentPoint3d.z());
+							ROS_INFO_THROTTLE(5,"UGVGOAL: -> x: %.3f, y: %.3f, z: %.3f", ugvGoalPoint.x(), ugvGoalPoint.y(), ugvGoalPoint.z());
+							ROS_INFO_THROTTLE(5,"UGVGOAL_PREC: -> x: %.3f, y: %.3f, z: %.3f", ugvGoalPoint_prec.x(), ugvGoalPoint_prec.y(), ugvGoalPoint_prec.z());
+							if (ugvGoalPoint_prec.x() != ugvGoalPoint.x() ||
+    							ugvGoalPoint_prec.y() != ugvGoalPoint.y() ||
+    							ugvGoalPoint_prec.z() != ugvGoalPoint.z()) {
+								
+								m_bestFrontierPoint = 
+										m_bestFrontierServer.bestFrontierInfGain(m_octree, currentPoint3d, m_clusteredCellsUpdated, ugvGoalPoint);
+								ugvGoalPoint_prec.x() = ugvGoalPoint.x();
+								ugvGoalPoint_prec.y() = ugvGoalPoint.y();
+								ugvGoalPoint_prec.z() = ugvGoalPoint.z();
+
+								m_allUAVGoals.push_back(m_bestFrontierPoint);
+								cout << "Best frontier: " << m_bestFrontierPoint << endl;
+								publishBestFrontier();
+								publishUAVGoal(m_bestFrontierPoint);
+								// m_currentGoalReached = false;
+								// std_msgs::Bool goal_reached_msg;
+								// goal_reached_msg.data = m_currentGoalReached;
+								// m_GoalReachedPub.publish(goal_reached_msg);
+								setStateAndPublish(ExplorationState::CHECKFORFRONTIERS);
+								flag_updateGoal = true;
+								std_msgs::Bool flag_updateGoal_msg;
+								flag_updateGoal_msg.data = flag_updateGoal;
+								m_UpdateGoalOCP.publish(flag_updateGoal_msg);
+								// }
+								break;
+							} else {
+								ros::spinOnce();
+								rate.sleep();  
+							}
+						}
+						break;
 					}			
 					// m_bestFrontierPoint = 
 					// 	m_bestFrontierServer.closestFrontier(m_octree, currentPoint3d, m_clusteredCellsUpdated);
-					m_logfile << "Best frontier: " << m_bestFrontierPoint << endl;
+					// m_logfile << "Best frontier: " << m_bestFrontierPoint << endl;
 
-					if (m_IsUGV) {
-						m_bestFrontierPoint.z() = 0.0;
-					}
-
-					m_allUAVGoals.push_back(m_bestFrontierPoint);
-					cout << "Best frontier: " << m_bestFrontierPoint << endl;
-					publishBestFrontier();
-					publishUAVGoal(m_bestFrontierPoint);
-					setStateAndPublish(ExplorationState::CHECKFORFRONTIERS);
+					// if (m_IsUGV) {
+					// 	m_bestFrontierPoint.z() = 0.0;
 					// }
-					break;
+
+					// m_allUAVGoals.push_back(m_bestFrontierPoint);
+					// cout << "Best frontier: " << m_bestFrontierPoint << endl;
+					// publishBestFrontier();
+					// publishUAVGoal(m_bestFrontierPoint);
+					// setStateAndPublish(ExplorationState::CHECKFORFRONTIERS);
+					// // }
+					// break;
 			}
 			ros::WallTime currentTime = ros::WallTime::now();
 			m_logfile << "Frontier exploration used total :" << (currentTime - startTime).toSec() << " sec" << endl;
 			loopRate.sleep();
 		}
+
 	}
 
 	void FrontierServer::publishParentFrontier()
@@ -687,10 +784,16 @@ namespace frontier_server
 		}
 		// finish MarkerArray:
 		std_msgs::ColorRGBA colorClusteredFrontier;
-		colorClusteredFrontier.r = 1.0;
-		colorClusteredFrontier.g = 0.9;
-		colorClusteredFrontier.b = 0.1;
-		colorClusteredFrontier.a = 0.7;
+		if(m_IsUGV){
+			colorClusteredFrontier.r = 184;
+			colorClusteredFrontier.g = 134;
+			colorClusteredFrontier.b = 11;
+			colorClusteredFrontier.a = 0.7; }
+		else {
+			colorClusteredFrontier.r = 1.0;
+			colorClusteredFrontier.g = 0.9;
+			colorClusteredFrontier.b = 0.1;
+			colorClusteredFrontier.a = 0.7;}
 
 		for (unsigned i= 0; i < frontierNodesVis.markers.size(); ++i)
 		{
@@ -701,9 +804,9 @@ namespace frontier_server
 			frontierNodesVis.markers[i].ns = "namespace";
 			frontierNodesVis.markers[i].id = i;
 			frontierNodesVis.markers[i].type = visualization_msgs::Marker::CUBE_LIST;
-			frontierNodesVis.markers[i].scale.x = size;
-			frontierNodesVis.markers[i].scale.y = size;
-			frontierNodesVis.markers[i].scale.z = size;
+			frontierNodesVis.markers[i].scale.x = m_resolution;
+			frontierNodesVis.markers[i].scale.y = m_resolution;
+			frontierNodesVis.markers[i].scale.z = m_resolution; //size
 			frontierNodesVis.markers[i].color = colorClusteredFrontier;
 			frontierNodesVis.markers[i].pose.orientation.x=0;
       		frontierNodesVis.markers[i].pose.orientation.y=0;

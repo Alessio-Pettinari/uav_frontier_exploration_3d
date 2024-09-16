@@ -18,16 +18,16 @@ exploration:
   bbx_minY: -7.5 #-8  
   bbx_maxY: 10.5 #11 #60 
   bbx_minZ: 1 #0.5
-  bbx_maxZ: 2.5 #5.0 
+  bbx_maxZ: 2.9 #5.0 
 
   # Length of one side of the cube inside which we calculate information gain
-  box_length: 8 #30
+  box_length: 4 #8 
   # Gain to scale exp function in information gain
-  k_gain: 10 # 100.0
+  k_gain: 1 #10
   # Constant; small lambda means that motion is cheap and gives priority
-  lambda: 0.5 #0.1386 
+  lambda: 0.5  
   #Gain to scale distance from UGV frontier
-  k_frontier: 1
+  k_frontier: 100
 
 
 
@@ -40,9 +40,9 @@ exploration:
 sensor_model:
   # Field of view in degrees
   horizontalFOV: 60 #69
-  verticalFOV: 30 #50   # vedi formula quaderno per calcolarla
+  verticalFOV: 35 #30 #50   # vedi formula quaderno per calcolarla
   # VelodyneVLP16 max range in meters
-  max_range: 4 
+  max_range: 4.5 #4 
   pitch_angle: 0.0  
 
   probability_hit: 0.7

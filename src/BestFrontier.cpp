@@ -95,24 +95,39 @@ namespace best_frontier
 
 			
 			double distFrontier = 0.0;
-			if (!m_IsUGV) {            	
-				double distFrontier = calculateDistance(currCandidate.first, ugvFrontier);
+			if (!m_IsUGV) { 
+				ROS_INFO("UGVFRONTIERAA: -> x: %.3f, y: %.3f, z: %.3f", ugvFrontier.x(), ugvFrontier.y(), ugvFrontier.z());
+				distFrontier = calculateDistance(currCandidate.first, ugvFrontier);
 			}
 
     	
 			double kGain = m_kGain;
-
+			
 			ros::WallTime startTime2 = ros::WallTime::now();
-			// InfGainVector[i] = (kGain * unknownVolume * exp(- m_lambda * tempDistance))*(m_kFrontier/(1+distFrontier)); 
-			InfGainVector[i] = (kGain * unknownVolume) + (m_lambda * tempDistance)+ (m_kFrontier/(1+distFrontier)); 
+			//InfGainVector[i] = (kGain * unknownVolume * exp(- m_lambda * tempDistance))*(m_kFrontier/(1+distFrontier)); 
+			// InfGainVector[i] = (kGain * unknownVolume) + (m_lambda * tempDistance)+ (m_kFrontier/(1+distFrontier));
+			// InfGainVector[i] = (kGain * unknownVolume) * (m_lambda * tempDistance)*(m_kFrontier/(1+distFrontier));
+			if (m_IsUGV)
+			{
+				InfGainVector[i] = (kGain * unknownVolume) * (m_lambda * tempDistance);
+				//InfGainVector[i] = (0.5* unknownVolume) * (m_lambda * tempDistance);
+
+
+			} else {
+				InfGainVector[i] = (0.5 * unknownVolume) * (0.2 * tempDistance)*(m_kFrontier/(1+distFrontier));
+				//InfGainVector[i] = (0.5* unknownVolume) * (0.5 * tempDistance);
+
+
+			}
+ 
 			double total_time_3 = (ros::WallTime::now() - startTime2).toSec();
 
-			ROS_INFO_STREAM("distFront:" << i<< "-" << distFrontier);
+			ROS_INFO_STREAM("distFront:" << i << "-" << distFrontier);
 			ROS_INFO_STREAM("Candidate " << i << " - InfGain: " << InfGainVector[i]);
-			ROS_INFO_STREAM("Distance " << i << " -d:" << tempDistance);
+			ROS_INFO_STREAM("Distance " << i << " - d:" << tempDistance);
 			// ROS_INFO_STREAM("time1:" << total_time_1);
-			ROS_INFO_STREAM("time2:" << total_time_2);
-			ROS_INFO_STREAM("time3:" << total_time_3);
+			// ROS_INFO_STREAM("time2:" << total_time_2);
+			// ROS_INFO_STREAM("time3:" << total_time_3);
 		}
 
 		// Find max element index
